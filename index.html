@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Rooster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overscroll-behavior-x: contain; /* Prevents overscrolling the page during swipe */
+        }
+        .schedule-item {
+            border-bottom: 1px solid #4B5563; /* gray-600 */
+        }
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+        .nav-button.active {
+            background-color: #3B82F6; /* blue-500 */
+            color: white;
+        }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Full viewport height */
+            padding: 8px;
+        }
+        #scheduleDisplayContainer { /* Renamed for clarity, this will handle swipes */
+            flex-grow: 1;
+            position: relative; /* For potential future absolute positioned elements within */
+        }
+        #scheduleDisplay {
+            height: 100%; /* Take full height of its container */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            background-color: #1F2937; /* bg-gray-800 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.75rem; /* p-3 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow */
+        }
+        .nav-button {
+            padding: 6px 8px;
+            font-size: 0.8rem;
+        }
+        .schedule-item div {
+            font-size: 0.85rem;
+        }
+        .schedule-time {
+            font-size: 0.75rem;
+            color: #9CA3AF; /* gray-400 */
+        }
+        /* Subtle animation for day transition */
+        .schedule-content.fade-enter {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        .schedule-content.fade-enter-active {
+            opacity: 1;
+            transform: translateX(0);
+            transition: opacity 300ms, transform 300ms;
+        }
+         .schedule-content.fade-exit {
+            opacity: 1;
+            transform: translateX(0px);
+        }
+        .schedule-content.fade-exit-active {
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: opacity 300ms, transform 300ms;
+        }
+
+    </style>
+</head>
+<body class="bg-black text-gray-100">
+
+    <div class="container mx-auto max-w-xs">
+        <header class="text-center py-2">
+            <h1 id="currentDayTitle" class="text-xl font-bold">Rooster</h1>
+        </header>
+
+        <nav class="flex justify-around my-2">
+            <button data-day-index="0" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Ma</button>
+            <button data-day-index="1" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Di</button>
+            <button data-day-index="2" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Wo</button>
+            <button data-day-index="3" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Do</button>
+            <button data-day-index="4" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Vr</button>
+        </nav>
+
+        <div id="scheduleDisplayContainer">
+             <div id="scheduleDisplay">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        const scheduleData = {
+            "Maandag": [
+                { time: "08:30-09:20", subject: "wi", teacher: "EIA", room: "0.11" },
+                { time: "09:20-10:10", subject: "ne", teacher: "SIJ", room: "1.11" },
+                { time: "10:10-11:00", subject: "bi", teacher: "HEF", room: "3.03" },
+                { time: "11:20-12:10", subject: "sl", teacher: "SIJ", room: "1.11" },
+                { time: "12:10-13:00", subject: "gs", teacher: "SLB", room: "0.01" },
+                { time: "13:30-14:20", subject: "ak", teacher: "CRM", room: "1.05" },
+                { time: "14:20-15:10", subject: "en", teacher: "BRP", room: "2.34" },
+                { time: "15:10-16:00", subject: "du", teacher: "STS", room: "2.08" }
+            ],
+            "Dinsdag": [ // Data toegevoegd op basis van de nieuwe afbeelding
+                { time: "08:30-09:20", subject: "en", teacher: "BRP", room: "2.34" },
+                { time: "09:20-10:10", subject: "ov/mw", teacher: "HAL", room: "3.04" },
+                { time: "10:10-11:00", subject: "Iv", teacher: "HAL", room: "2.10" },
+                { time: "11:20-12:10", subject: "ak", teacher: "CRM", room: "2.02" },
+                { time: "12:10-13:00", subject: "wi", teacher: "EIA", room: "0.11" },
+                { time: "13:30-14:20", subject: "ne", teacher: "SIJ", room: "1.11" },
+                { time: "14:20-15:10", subject: "mu", teacher: "VEM", room: "0.30" }
+            ],
+            "Woensdag": [
+                { time: "08:30-10:10", subject: "lo", teacher: "STJ", room: "GYMB" },
+                { time: "10:10-11:00", subject: "bi", teacher: "HEF", room: "3.03" },
+                { time: "11:20-12:10", subject: "du", teacher: "STS", room: "2.08" },
+                { time: "12:10-13:00", subject: "ne", teacher: "SIJ", room: "1.11" },
+                { time: "13:30-14:20", subject: "en", teacher: "BRP", room: "2.34" },
+                { time: "14:20-15:10", subject: "gs", teacher: "SLB", room: "1.14" },
+                { time: "15:10-16:00", subject: "na", teacher: "HER", room: "3.02" }
+            ],
+            "Donderdag": [
+                { time: "08:30-09:20", subject: "na", teacher: "HER", room: "3.01" },
+                { time: "09:20-10:10", subject: "Iv", teacher: "HAL", room: "0.52" },
+                { time: "10:10-11:00", subject: "wi", teacher: "EIA", room: "1.14" },
+                { time: "11:20-12:10", subject: "fa", teacher: "DUH", room: "1.05" },
+                { time: "12:10-13:00", subject: "fa", teacher: "DUH", room: "1.05" }
+            ],
+            "Vrijdag": [
+                { time: "09:20-10:10", subject: "du", teacher: "STS", room: "2.08" },
+                { time: "10:10-11:00", subject: "fa", teacher: "DUH", room: "1.14" },
+                { time: "11:30-13:00", subject: "gym", teacher: "STJ", room: "GYMZ" },
+            ]
+        };
+
+        const daysOrder = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag"];
+        let currentDayIndex = 0; // Start met Maandag
+
+        const scheduleDisplayContainer = document.getElementById('scheduleDisplayContainer');
+        const scheduleDisplay = document.getElementById('scheduleDisplay');
+        const navButtons = document.querySelectorAll('.nav-button');
+        const currentDayTitle = document.getElementById('currentDayTitle');
+
+        function updateCurrentDayTitle(dayName) {
+            currentDayTitle.textContent = dayName;
+        }
+
+        function displaySchedule(dayIndex, isSwipeNext = true) {
+            currentDayIndex = dayIndex;
+            const dayName = daysOrder[dayIndex];
+            updateCurrentDayTitle(dayName);
+
+            // Update active button state
+            navButtons.forEach(btn => {
+                if (parseInt(btn.dataset.dayIndex) === dayIndex) {
+                    btn.classList.add('active', 'bg-blue-500');
+                    btn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                } else {
+                    btn.classList.remove('active', 'bg-blue-500');
+                    btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                }
+            });
+
+            const lessons = scheduleData[dayName];
+            
+            // Create new content element
+            const newContent = document.createElement('div');
+            newContent.classList.add('schedule-content');
+
+            if (lessons && lessons.length > 0) {
+                newContent.innerHTML = lessons.map(lesson => `
+                    <div class="schedule-item py-2 px-1">
+                        <div class="font-semibold">${lesson.subject.toUpperCase()} - ${lesson.teacher} (${lesson.room})</div>
+                        <div class="schedule-time">${lesson.time}</div>
+                    </div>
+                `).join('');
+            } else {
+                newContent.innerHTML = '<div class="text-center py-4 text-gray-400">Geen lessen vandaag.</div>';
+            }
+
+            // Animation: old content slides out, new content slides in
+            const oldContent = scheduleDisplay.querySelector('.schedule-content');
+            if (oldContent) {
+                oldContent.classList.add('fade-exit', 'fade-exit-active');
+                 // Determine slide out direction based on swipe
+                oldContent.style.transform = isSwipeNext ? 'translateX(-100%)' : 'translateX(100%)';
+                oldContent.addEventListener('transitionend', () => {
+                    oldContent.remove();
+                }, { once: true });
+            }
+            
+            newContent.classList.add('fade-enter');
+            // Determine slide in direction
+            newContent.style.transform = isSwipeNext ? 'translateX(100%)' : 'translateX(-100%)';
+            scheduleDisplay.appendChild(newContent);
+            
+            // Trigger fade-in
+            requestAnimationFrame(() => {
+                 requestAnimationFrame(() => { // Double requestAnimationFrame for some browsers
+                    newContent.classList.add('fade-enter-active');
+                    newContent.style.transform = 'translateX(0)';
+                 });
+            });
+        }
+
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const newDayIndex = parseInt(button.dataset.dayIndex);
+                const isNext = newDayIndex > currentDayIndex;
+                displaySchedule(newDayIndex, isNext);
+            });
+        });
+
+        // Swipe functionaliteit
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const swipeThreshold = 50; // Minimale swipe afstand in pixels
+
+        scheduleDisplayContainer.addEventListener('touchstart', (event) => {
+            touchStartX = event.changedTouches[0].screenX;
+        }, { passive: true }); // passive voor betere scroll performance
+
+        scheduleDisplayContainer.addEventListener('touchend', (event) => {
+            touchEndX = event.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const swipeDistance = touchEndX - touchStartX;
+            let isSwipeNext = true;
+
+            if (swipeDistance > swipeThreshold) { // Swipe naar rechts (vorige dag)
+                if (currentDayIndex > 0) {
+                    isSwipeNext = false;
+                    displaySchedule(currentDayIndex - 1, isSwipeNext);
+                }
+            } else if (swipeDistance < -swipeThreshold) { // Swipe naar links (volgende dag)
+                if (currentDayIndex < daysOrder.length - 1) {
+                    isSwipeNext = true;
+                    displaySchedule(currentDayIndex + 1, isSwipeNext);
+                }
+            }
+            // Reset touchX
+            touchStartX = 0;
+            touchEndX = 0;
+        }
+
+        // Initial display
+        document.addEventListener('DOMContentLoaded', () => {
+            const date = new Date();
+            // getDay() geeft 0 voor Zondag, 1 voor Maandag, ..., 6 voor Zaterdag.
+            // We willen Maandag (0) tot Vrijdag (4) voor daysOrder.
+            let todayIndex = date.getDay() - 1; 
+            if (todayIndex < 0 || todayIndex > 4) { // Weekend of ongeldig
+                todayIndex = 0; // Standaard naar Maandag
+            }
+            
+            // Check if there is data for today, otherwise default to Monday (index 0)
+            if (scheduleData[daysOrder[todayIndex]] && scheduleData[daysOrder[todayIndex]].length > 0) {
+                 displaySchedule(todayIndex);
+            } else {
+                 displaySchedule(0); // Fallback to Monday
+            }
+        });
+    </script>
+
+</body>
+</html>
