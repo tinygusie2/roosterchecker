@@ -2,106 +2,147 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Rooster</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Use Inter font as a base */
         body {
             font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            overscroll-behavior-x: contain; /* Prevents overscrolling the page during swipe */
+            /* Prevent page-level horizontal scroll/bounce, especially on iOS */
+            overscroll-behavior-x: contain;
         }
+        /* Styling for each individual schedule item */
         .schedule-item {
-            border-bottom: 1px solid #4B5563; /* gray-600 */
+            border-bottom: 1px solid #374151; /* gray-700, slightly lighter for better separation */
+            padding-top: 0.6rem; /* Increased padding for readability */
+            padding-bottom: 0.6rem;
         }
         .schedule-item:last-child {
             border-bottom: none;
         }
+        /* Active state for navigation buttons */
         .nav-button.active {
             background-color: #3B82F6; /* blue-500 */
             color: white;
+            font-weight: 700; /* Bold active day */
         }
+        /* Full height setup for html and body, critical for predictable layout on all devices */
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            overflow: hidden; /* Prevent body scroll, scrolling handled by specific containers */
         }
+        /* Main container for the app */
         .container {
             display: flex;
             flex-direction: column;
             height: 100vh; /* Full viewport height */
-            padding: 8px;
+            padding: 6px; /* Reduced overall padding slightly for small screens */
+            box-sizing: border-box; /* Include padding in height/width calculations */
         }
-        #scheduleDisplayContainer { /* Renamed for clarity, this will handle swipes */
-            flex-grow: 1;
-            position: relative; /* For potential future absolute positioned elements within */
+        /* Header styling */
+        .header-title {
+            font-size: 1.1rem; /* Slightly larger title */
+            padding-top: 4px; /* Add some space above title */
+            padding-bottom: 4px;
         }
-        #scheduleDisplay {
-            height: 100%; /* Take full height of its container */
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            background-color: #1F2937; /* bg-gray-800 */
-            border-radius: 0.5rem; /* rounded-lg */
-            padding: 0.75rem; /* p-3 */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow */
-        }
+        /* Navigation button styling */
         .nav-button {
             padding: 6px 8px;
-            font-size: 0.8rem;
+            font-size: 0.8rem; /* Maintained font size for buttons */
+            border-radius: 0.5rem; /* rounded-lg */
         }
-        .schedule-item div {
-            font-size: 0.85rem;
+        /* Container for the schedule display, handles swipe gestures */
+        #scheduleDisplayContainer {
+            flex-grow: 1; /* Allows this container to fill available vertical space */
+            position: relative; /* Needed for absolute positioning of animated content */
+            overflow: hidden; /* Clip content that animates out */
+            margin-top: 4px; /* Small margin above schedule */
         }
+        /* Actual scrollable area for schedule items */
+        #scheduleDisplay {
+            height: 100%; /* Takes full height of its parent (#scheduleDisplayContainer) */
+            overflow-y: auto; /* Enables vertical scrolling ONLY if content overflows */
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            background-color: #1F2937; /* bg-gray-800 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding-left: 0.5rem; /* p-2 */
+            padding-right: 0.5rem; /* p-2 */
+        }
+        /* Styling for subject, teacher, room text */
+        .schedule-info {
+            font-size: 0.9rem; /* Increased font size */
+            font-weight: 500; /* Medium weight */
+            color: #F3F4F6; /* gray-100 */
+        }
+        /* Styling for the time display */
         .schedule-time {
-            font-size: 0.75rem;
+            font-size: 0.8rem; /* Increased font size */
+            color: #D1D5DB; /* gray-300, lighter for better contrast */
+        }
+        /* No lessons message styling */
+        .no-lessons {
+            text-align: center;
+            padding-top: 1rem; /* py-4 */
+            padding-bottom: 1rem; /* py-4 */
             color: #9CA3AF; /* gray-400 */
-        }
-        /* Subtle animation for day transition */
-        .schedule-content.fade-enter {
-            opacity: 0;
-            transform: translateX(20px);
-        }
-        .schedule-content.fade-enter-active {
-            opacity: 1;
-            transform: translateX(0);
-            transition: opacity 300ms, transform 300ms;
-        }
-         .schedule-content.fade-exit {
-            opacity: 1;
-            transform: translateX(0px);
-        }
-        .schedule-content.fade-exit-active {
-            opacity: 0;
-            transform: translateX(-20px);
-            transition: opacity 300ms, transform 300ms;
+            font-size: 0.9rem;
         }
 
+        /* Animation classes for content transition */
+        .schedule-content {
+            /* Base styles for content that will be animated */
+            position: absolute; /* Allows smooth transition without affecting layout temporarily */
+            width: 100%;
+            top: 0;
+            left: 0;
+            padding: 0.75rem; /* p-3 equivalent */
+            box-sizing: border-box;
+        }
+        .fade-enter {
+            opacity: 0;
+        }
+        .fade-enter-active {
+            opacity: 1;
+            transition: opacity 250ms ease-in-out, transform 250ms ease-in-out;
+        }
+        .fade-exit {
+            opacity: 1;
+        }
+        .fade-exit-active {
+            opacity: 0;
+            transition: opacity 250ms ease-in-out, transform 250ms ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-black text-gray-100">
 
     <div class="container mx-auto max-w-xs">
-        <header class="text-center py-2">
-            <h1 id="currentDayTitle" class="text-xl font-bold">Rooster</h1>
+        <header class="text-center">
+            <h1 id="currentDayTitle" class="header-title font-bold">Rooster</h1>
         </header>
 
-        <nav class="flex justify-around my-2">
-            <button data-day-index="0" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Ma</button>
-            <button data-day-index="1" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Di</button>
-            <button data-day-index="2" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Wo</button>
-            <button data-day-index="3" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Do</button>
-            <button data-day-index="4" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1 px-2 rounded-lg text-xs">Vr</button>
+        <nav class="flex justify-around my-1">
+            <button data-day-index="0" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold">Ma</button>
+            <button data-day-index="1" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold">Di</button>
+            <button data-day-index="2" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold">Wo</button>
+            <button data-day-index="3" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold">Do</button>
+            <button data-day-index="4" class="nav-button bg-gray-700 hover:bg-gray-600 text-white font-semibold">Vr</button>
         </nav>
 
         <div id="scheduleDisplayContainer">
-             <div id="scheduleDisplay">
+            <div id="scheduleDisplay">
                 </div>
         </div>
     </div>
 
     <script>
+        // Data for the schedule, organized by day
         const scheduleData = {
             "Maandag": [
                 { time: "08:30-09:20", subject: "wi", teacher: "EIA", room: "0.11" },
@@ -113,7 +154,7 @@
                 { time: "14:20-15:10", subject: "en", teacher: "BRP", room: "2.34" },
                 { time: "15:10-16:00", subject: "du", teacher: "STS", room: "2.08" }
             ],
-            "Dinsdag": [ // Data toegevoegd op basis van de nieuwe afbeelding
+            "Dinsdag": [
                 { time: "08:30-09:20", subject: "en", teacher: "BRP", room: "2.34" },
                 { time: "09:20-10:10", subject: "ov/mw", teacher: "HAL", room: "3.04" },
                 { time: "10:10-11:00", subject: "Iv", teacher: "HAL", room: "2.10" },
@@ -139,30 +180,32 @@
                 { time: "12:10-13:00", subject: "fa", teacher: "DUH", room: "1.05" }
             ],
             "Vrijdag": [
-                { time: "09:20-10:10", subject: "du", teacher: "STS", room: "2.08" },
-                { time: "10:10-11:00", subject: "fa", teacher: "DUH", room: "1.14" },
-                { time: "11:30-13:00", subject: "gym", teacher: "STJ", room: "GYMZ" },
+                // Placeholder for Friday, can be populated if data becomes available
             ]
         };
 
+        // Order of days for navigation
         const daysOrder = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag"];
-        let currentDayIndex = 0; // Start met Maandag
+        let currentDayIndex = 0; // Default to Monday
 
+        // DOM element references
         const scheduleDisplayContainer = document.getElementById('scheduleDisplayContainer');
-        const scheduleDisplay = document.getElementById('scheduleDisplay');
+        const scheduleDisplay = document.getElementById('scheduleDisplay'); // This is the scrollable div
         const navButtons = document.querySelectorAll('.nav-button');
         const currentDayTitle = document.getElementById('currentDayTitle');
 
+        // Function to update the main title with the current day's name
         function updateCurrentDayTitle(dayName) {
             currentDayTitle.textContent = dayName;
         }
 
-        function displaySchedule(dayIndex, isSwipeNext = true) {
+        // Function to display the schedule for a given day index
+        function displaySchedule(dayIndex, swipeDirection = 'none') { // swipeDirection: 'left', 'right', 'none'
             currentDayIndex = dayIndex;
             const dayName = daysOrder[dayIndex];
             updateCurrentDayTitle(dayName);
 
-            // Update active button state
+            // Highlight the active navigation button
             navButtons.forEach(btn => {
                 if (parseInt(btn.dataset.dayIndex) === dayIndex) {
                     btn.classList.add('active', 'bg-blue-500');
@@ -175,103 +218,113 @@
 
             const lessons = scheduleData[dayName];
             
-            // Create new content element
+            // Create a new div for the day's content to animate it
             const newContent = document.createElement('div');
-            newContent.classList.add('schedule-content');
+            newContent.classList.add('schedule-content'); // This div will be animated
 
             if (lessons && lessons.length > 0) {
                 newContent.innerHTML = lessons.map(lesson => `
-                    <div class="schedule-item py-2 px-1">
-                        <div class="font-semibold">${lesson.subject.toUpperCase()} - ${lesson.teacher} (${lesson.room})</div>
+                    <div class="schedule-item">
+                        <div class="schedule-info">${lesson.subject.toUpperCase()} - ${lesson.teacher} (${lesson.room})</div>
                         <div class="schedule-time">${lesson.time}</div>
                     </div>
                 `).join('');
             } else {
-                newContent.innerHTML = '<div class="text-center py-4 text-gray-400">Geen lessen vandaag.</div>';
+                newContent.innerHTML = '<div class="no-lessons">Geen lessen vandaag.</div>';
             }
 
-            // Animation: old content slides out, new content slides in
+            // Animation logic: old content slides out, new content slides in
             const oldContent = scheduleDisplay.querySelector('.schedule-content');
+            
             if (oldContent) {
-                oldContent.classList.add('fade-exit', 'fade-exit-active');
-                 // Determine slide out direction based on swipe
-                oldContent.style.transform = isSwipeNext ? 'translateX(-100%)' : 'translateX(100%)';
+                oldContent.classList.add('fade-exit');
+                if (swipeDirection === 'left') oldContent.style.transform = 'translateX(-100%)';
+                else if (swipeDirection === 'right') oldContent.style.transform = 'translateX(100%)';
+                else oldContent.style.transform = 'translateX(-100%)'; // Default for button click
+
+                oldContent.classList.add('fade-exit-active');
                 oldContent.addEventListener('transitionend', () => {
                     oldContent.remove();
                 }, { once: true });
             }
             
             newContent.classList.add('fade-enter');
-            // Determine slide in direction
-            newContent.style.transform = isSwipeNext ? 'translateX(100%)' : 'translateX(-100%)';
-            scheduleDisplay.appendChild(newContent);
+            if (swipeDirection === 'left') newContent.style.transform = 'translateX(100%)';
+            else if (swipeDirection === 'right') newContent.style.transform = 'translateX(-100%)';
+            else newContent.style.transform = 'translateX(100%)'; // Default for button click
+
+            scheduleDisplay.appendChild(newContent); // Add to the scrollable container
             
-            // Trigger fade-in
+            // Force reflow for transition to take effect
             requestAnimationFrame(() => {
-                 requestAnimationFrame(() => { // Double requestAnimationFrame for some browsers
-                    newContent.classList.add('fade-enter-active');
-                    newContent.style.transform = 'translateX(0)';
-                 });
+                newContent.classList.add('fade-enter-active');
+                newContent.style.transform = 'translateX(0)';
             });
+            scheduleDisplay.scrollTop = 0; // Scroll to top of new content
         }
 
+        // Add click listeners to navigation buttons
         navButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const newDayIndex = parseInt(button.dataset.dayIndex);
-                const isNext = newDayIndex > currentDayIndex;
-                displaySchedule(newDayIndex, isNext);
+                const swipeDir = newDayIndex > currentDayIndex ? 'left' : (newDayIndex < currentDayIndex ? 'right' : 'none');
+                displaySchedule(newDayIndex, swipeDir);
             });
         });
 
-        // Swipe functionaliteit
+        // Swipe functionality for changing days
         let touchStartX = 0;
         let touchEndX = 0;
-        const swipeThreshold = 50; // Minimale swipe afstand in pixels
+        const swipeThreshold = 50; // Minimum distance for a swipe
 
+        // Attach swipe listeners to the container of the scrollable schedule
         scheduleDisplayContainer.addEventListener('touchstart', (event) => {
-            touchStartX = event.changedTouches[0].screenX;
-        }, { passive: true }); // passive voor betere scroll performance
+            // Only register horizontal swipes if not scrolling vertically
+            if (event.touches.length === 1) { // Single touch
+                 touchStartX = event.changedTouches[0].screenX;
+            }
+        }, { passive: true });
 
         scheduleDisplayContainer.addEventListener('touchend', (event) => {
-            touchEndX = event.changedTouches[0].screenX;
-            handleSwipe();
+            if (event.touches.length === 0) { // Ensure touch has ended
+                touchEndX = event.changedTouches[0].screenX;
+                handleSwipe();
+            }
         }, { passive: true });
 
         function handleSwipe() {
             const swipeDistance = touchEndX - touchStartX;
-            let isSwipeNext = true;
+            let swipeDirection = 'none';
 
-            if (swipeDistance > swipeThreshold) { // Swipe naar rechts (vorige dag)
+            if (swipeDistance > swipeThreshold) { // Swipe to the right (previous day)
                 if (currentDayIndex > 0) {
-                    isSwipeNext = false;
-                    displaySchedule(currentDayIndex - 1, isSwipeNext);
+                    swipeDirection = 'right';
+                    displaySchedule(currentDayIndex - 1, swipeDirection);
                 }
-            } else if (swipeDistance < -swipeThreshold) { // Swipe naar links (volgende dag)
+            } else if (swipeDistance < -swipeThreshold) { // Swipe to the left (next day)
                 if (currentDayIndex < daysOrder.length - 1) {
-                    isSwipeNext = true;
-                    displaySchedule(currentDayIndex + 1, isSwipeNext);
+                    swipeDirection = 'left';
+                    displaySchedule(currentDayIndex + 1, swipeDirection);
                 }
             }
-            // Reset touchX
+            // Reset touch coordinates
             touchStartX = 0;
             touchEndX = 0;
         }
 
-        // Initial display
+        // Initialize the schedule display on page load
         document.addEventListener('DOMContentLoaded', () => {
             const date = new Date();
-            // getDay() geeft 0 voor Zondag, 1 voor Maandag, ..., 6 voor Zaterdag.
-            // We willen Maandag (0) tot Vrijdag (4) voor daysOrder.
-            let todayIndex = date.getDay() - 1; 
-            if (todayIndex < 0 || todayIndex > 4) { // Weekend of ongeldig
-                todayIndex = 0; // Standaard naar Maandag
+            let todayIndex = date.getDay() -1; // 0 (Mon) to 6 (Sun), adjust to 0-4 for daysOrder
+            if (todayIndex < 0 || todayIndex > 4) { // If weekend or Sunday (0 becomes -1)
+                todayIndex = 0; // Default to Monday
             }
             
-            // Check if there is data for today, otherwise default to Monday (index 0)
+            // Check if there's data for the determined day, otherwise default to Monday
             if (scheduleData[daysOrder[todayIndex]] && scheduleData[daysOrder[todayIndex]].length > 0) {
                  displaySchedule(todayIndex);
             } else {
-                 displaySchedule(0); // Fallback to Monday
+                 displaySchedule(0); // Fallback to Monday if no lessons or weekend
             }
         });
     </script>
